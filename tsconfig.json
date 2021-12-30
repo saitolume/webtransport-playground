@@ -1,0 +1,27 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "allowSyntheticDefaultImports": true,
+    "baseUrl": ".",
+    "esModuleInterop": false,
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "skipLibCheck": false,
+    "forceConsistentCasingInFileNames": true,
+    "module": "esnext",
+    "moduleResolution": "node",
+    "noEmit": true,
+    "isolatedModules": true,
+    "strict": true,
+    "target": "esnext",
+    "jsx": "react-jsx",
+    "paths": {
+      "~/*": ["client/*"]
+    },
+    "useDefineForClassFields": true,
+    "types": [
+      "typed-query-selector",
+      "@types/dom-webcodecs",
+      "@types/dom-mediacapture-transform"
+    ]
+  }
+}
