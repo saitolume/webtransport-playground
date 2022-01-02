@@ -70,12 +70,26 @@ addEventListener('message', async (event) => {
         buffer[frame][order] = data
         sum[frame] += data.byteLength
 
-        const keys = Object.keys(buffer).sort()
+        const keys = Object.keys(buffer)
+          .map((key) => Number(key))
+          .sort()
+
         const result = keys.map((key) => {
           if (
-            sum[Number(key)] === length[Number(key)] &&
+            typeof lastDecodedFrame === 'number' &&
+            key - lastDecodedFrame > 30
+          ) {
+            if (header[key]) delete header[key]
+            if (buffer[key]) delete buffer[key]
+            if (sum[key]) delete sum[key]
+            if (length[key]) delete length[key]
+            return
+          }
+
+          if (
+            sum[key] === length[key] &&
             (typeof lastDecodedFrame === 'number'
-              ? lastDecodedFrame + 1 === Number(key)
+              ? lastDecodedFrame + 1 === key
               : true)
           ) {
             concatFrame({
@@ -83,7 +97,7 @@ addEventListener('message', async (event) => {
               header,
               length,
               sum,
-              frame: Number(key),
+              frame: key,
               decoder,
             })
             if (setTimeoutId) {
@@ -97,15 +111,14 @@ addEventListener('message', async (event) => {
         })
 
         if (
+          keys.length > 1 &&
           result.every((value) => value === false) &&
-          result.length >= 2 &&
           setTimeoutId === undefined
         ) {
           postMessage({ type: 'disconnect' })
-          setTimeoutId = self.setTimeout(
-            () => postMessage({ type: 'reconnect' }),
-            2000
-          )
+          setTimeoutId = self.setTimeout(() => {
+            postMessage({ type: 'reconnect' })
+          }, 2000)
         }
       },
     })
@@ -115,7 +128,6 @@ addEventListener('message', async (event) => {
 
   const disconnect = () => {
     webTransport.close()
-    lastDecodedFrame = undefined
   }
 
   switch (event.data.type) {
