@@ -106,7 +106,6 @@ const RoomId: VFC = () => {
           backgroundColor: '#000',
           width: '100%',
           height: '100%',
-          cursor: 'pointer',
         }}
         width={1920}
         controls
