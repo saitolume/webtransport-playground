@@ -1,5 +1,12 @@
-import { Box, useToast } from '@chakra-ui/react'
-import { useCallback, useEffect, useLayoutEffect, useRef, VFC } from 'react'
+import { Box, CircularProgress } from '@chakra-ui/react'
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  VFC,
+} from 'react'
 import { useMatch } from 'react-location'
 import DecoderWorker from '~/workers/decode?worker'
 
@@ -8,7 +15,8 @@ const RoomId: VFC = () => {
   const decoder = useRef<Worker>()
   const mediaStream = useRef(new MediaStream())
   const trackGenerator = useRef<MediaStreamVideoTrackGenerator>()
-  const toast = useToast()
+  const [isLoading, setIsLoading] = useState(false)
+  const [isPlaying, setIsPlaying] = useState(false)
 
   const {
     params: { roomId },
@@ -16,6 +24,7 @@ const RoomId: VFC = () => {
 
   const handlePlay = useCallback(() => {
     if (video.current === null) return
+    setIsPlaying(true)
     const worker = new DecoderWorker()
     const track = new MediaStreamTrackGenerator({ kind: 'video' })
     const writable = track.writable
@@ -29,14 +38,17 @@ const RoomId: VFC = () => {
       [writable]
     )
     worker.onmessage = async ({ data }) => {
-      if (data.type === 'disconnect') {
-        toast({
-          description: '通信が切断されました。',
-          position: 'top-right',
-          status: 'error',
-        })
-        handlePause()
-        handlePlay()
+      switch (data.type) {
+        case 'reconnect': {
+          handlePause()
+          handlePlay()
+          setIsLoading(false)
+          break
+        }
+        case 'disconnect': {
+          setIsLoading(true)
+          break
+        }
       }
     }
 
@@ -46,6 +58,7 @@ const RoomId: VFC = () => {
   }, [roomId])
 
   const handlePause = useCallback(async () => {
+    setIsPlaying(false)
     decoder.current?.postMessage({ type: 'disconnect' })
     decoder.current?.terminate()
     if (trackGenerator.current) {
@@ -64,6 +77,7 @@ const RoomId: VFC = () => {
 
   return (
     <Box
+      alignItems="center"
       bg="black"
       display="flex"
       height="100%"
@@ -72,6 +86,17 @@ const RoomId: VFC = () => {
       style={{ aspectRatio: '16 / 9' }}
       width="100%"
     >
+      {isLoading && isPlaying && (
+        <CircularProgress
+          color="black"
+          position="absolute"
+          size="100px"
+          thickness="4px"
+          zIndex={1}
+          capIsRound
+          isIndeterminate
+        />
+      )}
       <video
         ref={video}
         height={1080}

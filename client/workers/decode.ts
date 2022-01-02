@@ -101,9 +101,11 @@ addEventListener('message', async (event) => {
           result.length >= 2 &&
           setTimeoutId === undefined
         ) {
-          setTimeoutId = self.setTimeout(() => {
-            postMessage({ type: 'disconnect' })
-          }, 2000)
+          postMessage({ type: 'disconnect' })
+          setTimeoutId = self.setTimeout(
+            () => postMessage({ type: 'reconnect' }),
+            2000
+          )
         }
       },
     })
