@@ -15,7 +15,7 @@
     "target": "esnext",
     "jsx": "react-jsx",
     "paths": {
-      "~/*": ["packages/client/*"]
+      "~/*": ["client/*"]
     },
     "useDefineForClassFields": true,
     "types": [
