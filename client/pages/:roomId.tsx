@@ -12,7 +12,7 @@ import DecoderWorker from '~/workers/decode?worker'
 
 const RoomId: VFC = () => {
   const video = useRef<HTMLVideoElement>(null)
-  const decoder = useRef<Worker>()
+  const worker = useRef<Worker>()
   const mediaStream = useRef(new MediaStream())
   const trackGenerator = useRef<MediaStreamVideoTrackGenerator>()
   const [isLoading, setIsLoading] = useState(false)
@@ -25,11 +25,11 @@ const RoomId: VFC = () => {
   const handlePlay = useCallback(() => {
     if (video.current === null) return
     setIsPlaying(true)
-    const worker = new DecoderWorker()
     const track = new MediaStreamTrackGenerator({ kind: 'video' })
     const writable = track.writable
+    worker.current = new DecoderWorker()
     // @ts-expect-error WritableStream は厳密には Transferable ではないが所有権を Worker に渡すことができる
-    worker.postMessage(
+    worker.current.postMessage(
       {
         type: 'connect',
         writable,
@@ -37,30 +37,26 @@ const RoomId: VFC = () => {
       },
       [writable]
     )
-    worker.onmessage = async ({ data }) => {
+    worker.current.onmessage = async ({ data }) => {
       switch (data.type) {
-        case 'reconnect': {
+        case 'reconnect':
           handlePause()
           handlePlay()
           setIsLoading(false)
           break
-        }
-        case 'disconnect': {
+        case 'disconnect':
           setIsLoading(true)
           break
-        }
       }
     }
 
     trackGenerator.current = track
-    decoder.current = worker
     mediaStream.current.addTrack(trackGenerator.current)
   }, [roomId])
 
   const handlePause = useCallback(async () => {
     setIsPlaying(false)
-    decoder.current?.postMessage({ type: 'disconnect' })
-    decoder.current?.terminate()
+    worker.current?.terminate()
     if (trackGenerator.current) {
       mediaStream.current.removeTrack(trackGenerator.current)
     }
@@ -72,7 +68,7 @@ const RoomId: VFC = () => {
   }, [])
 
   useEffect(() => {
-    return () => decoder.current?.postMessage({ type: 'disconnect' })
+    return () => worker.current?.terminate()
   }, [])
 
   return (

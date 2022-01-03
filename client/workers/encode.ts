@@ -1,21 +1,33 @@
-addEventListener('message', async (event) => {
-  let webTransport: WebTransport
-  const LIMIT = 1000
+type EncodeProps =
+  | {
+      type: 'connect'
+      width: number
+      height: number
+      roomId: string
+      readable: ReadableStream<VideoFrame>
+      writable: WritableStream<VideoFrame>
+    }
+  | {
+      type: 'disconnect'
+    }
+  | {
+      type: 'start'
+    }
+  | {
+      type: 'stop'
+    }
 
-  const connect = async ({
-    data,
-  }: MessageEvent<{
-    width: number
-    height: number
-    roomId: string
-    readable: ReadableStream<VideoFrame>
-    writable: WritableStream<VideoFrame>
-  }>) => {
+let encoding = false
+let frame = 0
+
+addEventListener('message', async (event: MessageEvent<EncodeProps>) => {
+  const BYTE_LENGTH_LIMIT = 1000
+
+  const connect = async ({ data }: MessageEvent<EncodeProps>) => {
+    if (data.type !== 'connect') return
     const url = `https://localhost:4433/streams/${data.roomId}`
-    webTransport = new WebTransport(url)
+    const webTransport = new WebTransport(url)
     await webTransport.ready
-
-    let frame = 0
     const writer = webTransport.datagrams.writable.getWriter()
 
     const encoder = new VideoEncoder({
@@ -35,7 +47,9 @@ addEventListener('message', async (event) => {
         let count = 0
         for (let i = 0; i < chunk.byteLength; ) {
           const length =
-            chunk.byteLength > i + LIMIT ? LIMIT : chunk.byteLength - i
+            chunk.byteLength > i + BYTE_LENGTH_LIMIT
+              ? BYTE_LENGTH_LIMIT
+              : chunk.byteLength - i
           const body = new Uint8Array(length + 8)
           const view = new DataView(body.buffer)
           view.setUint32(0, frame)
@@ -59,9 +73,11 @@ addEventListener('message', async (event) => {
 
     const transformer = new TransformStream<VideoFrame>({
       async transform(videoFrame, controller) {
-        encoder.encode(videoFrame, { keyFrame: frame % 30 === 0 })
+        if (encoding) {
+          encoder.encode(videoFrame, { keyFrame: frame % 30 === 0 })
+          frame++
+        }
         controller.enqueue(videoFrame)
-        frame++
       },
       flush(controller) {
         controller.terminate()
@@ -70,16 +86,15 @@ addEventListener('message', async (event) => {
     data.readable.pipeThrough(transformer).pipeTo(data.writable)
   }
 
-  const disconnect = () => {
-    webTransport.close()
-  }
-
   switch (event.data.type) {
     case 'connect':
-      return connect(event)
-    case 'disconnect':
-      return disconnect()
-    default:
-      throw new Error('unreachable')
+      await connect(event)
+      break
+    case 'start':
+      encoding = true
+      break
+    case 'stop':
+      encoding = false
+      break
   }
 })

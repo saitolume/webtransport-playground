@@ -7,138 +7,121 @@ type Buf = Record<FrameCount, Record<number, Uint8Array>>
 type Length = Record<FrameCount, number>
 type Sum = Record<FrameCount, number>
 
-const LIMIT = 1000
+type DecodeProps = {
+  type: 'connect'
+  writable: WritableStream<VideoFrame>
+  roomId: string
+}
+
+const BYTE_LENGTH_LIMIT = 1000
 let waitingKeyframe = true
 let lastDecodedFrame: number | undefined = undefined
 let setTimeoutId: number | undefined = undefined
 
-addEventListener('message', async (event) => {
-  let webTransport: WebTransport
+addEventListener('message', async ({ data }: MessageEvent<DecodeProps>) => {
+  const url = `https://localhost:4433/${data.roomId}`
+  const webTransport = new WebTransport(url)
+  await webTransport.ready
 
-  const connect = async ({
-    data,
-  }: MessageEvent<{
-    writable: WritableStream<VideoFrame>
-    roomId: string
-  }>) => {
-    const url = `https://localhost:4433/${data.roomId}`
-    webTransport = new WebTransport(url)
-    await webTransport.ready
+  const writer = data.writable.getWriter()
 
-    const writer = data.writable.getWriter()
+  const decoder = new VideoDecoder({
+    async output(chunk) {
+      await writer.write(chunk)
+    },
+    error: console.error,
+  })
 
-    const decoder = new VideoDecoder({
-      async output(chunk) {
-        await writer.write(chunk)
-      },
-      error: console.error,
-    })
+  decoder.configure({
+    codec: 'vp8',
+    optimizeForLatency: true,
+  })
 
-    decoder.configure({
-      codec: 'vp8',
-      optimizeForLatency: true,
-    })
+  const header: Header = {}
+  const buffer: Buf = {}
+  const length: Length = {}
+  const sum: Sum = {}
 
-    const header: Header = {}
-    const buffer: Buf = {}
-    const length: Length = {}
-    const sum: Sum = {}
+  const writable = new WritableStream<Uint8Array>({
+    write(chunk) {
+      const dataView = new DataView(chunk.buffer)
+      const frame = dataView.getUint32(0)
+      const order = dataView.getUint32(4)
 
-    const writable = new WritableStream<Uint8Array>({
-      write(chunk) {
-        const dataView = new DataView(chunk.buffer)
-        const frame = dataView.getUint32(0)
-        const order = dataView.getUint32(4)
+      if (!(frame in buffer)) {
+        buffer[frame] = []
+        length[frame] = Number.MAX_SAFE_INTEGER
+        sum[frame] = 0
+      }
 
-        if (!(frame in buffer)) {
-          buffer[frame] = []
-          length[frame] = Number.MAX_SAFE_INTEGER
-          sum[frame] = 0
+      if (order === 0) {
+        length[frame] = dataView.getUint32(25)
+        header[frame] = {
+          type: dataView.getUint8(8) === 1 ? 'key' : 'delta',
+          timestamp: Number(dataView.getBigInt64(9)),
+          duration: Number(dataView.getBigUint64(17)),
         }
+        return
+      }
 
-        if (order === 0) {
-          length[frame] = dataView.getUint32(25)
-          header[frame] = {
-            type: dataView.getUint8(8) === 1 ? 'key' : 'delta',
-            timestamp: Number(dataView.getBigInt64(9)),
-            duration: Number(dataView.getBigUint64(17)),
-          }
+      const data = new Uint8Array(chunk.buffer.slice(8))
+      buffer[frame][order] = data
+      sum[frame] += data.byteLength
+
+      const keys = Object.keys(buffer)
+        .map((key) => Number(key))
+        .sort()
+
+      const result = keys.map((key) => {
+        if (
+          typeof lastDecodedFrame === 'number' &&
+          key - lastDecodedFrame > 30
+        ) {
+          if (header[key]) delete header[key]
+          if (buffer[key]) delete buffer[key]
+          if (sum[key]) delete sum[key]
+          if (length[key]) delete length[key]
           return
         }
 
-        const data = new Uint8Array(chunk.buffer.slice(8))
-        buffer[frame][order] = data
-        sum[frame] += data.byteLength
-
-        const keys = Object.keys(buffer)
-          .map((key) => Number(key))
-          .sort()
-
-        const result = keys.map((key) => {
-          if (
-            typeof lastDecodedFrame === 'number' &&
-            key - lastDecodedFrame > 30
-          ) {
-            if (header[key]) delete header[key]
-            if (buffer[key]) delete buffer[key]
-            if (sum[key]) delete sum[key]
-            if (length[key]) delete length[key]
-            return
-          }
-
-          if (
-            sum[key] === length[key] &&
-            (typeof lastDecodedFrame === 'number'
-              ? lastDecodedFrame + 1 === key
-              : true)
-          ) {
-            concatFrame({
-              buffer,
-              header,
-              length,
-              sum,
-              frame: key,
-              decoder,
-            })
-            if (setTimeoutId) {
-              clearTimeout(setTimeoutId)
-              setTimeoutId = undefined
-            }
-            return true
-          } else {
-            return false
-          }
-        })
-
         if (
-          keys.length > 1 &&
-          result.every((value) => value === false) &&
-          setTimeoutId === undefined
+          sum[key] === length[key] &&
+          (typeof lastDecodedFrame === 'number'
+            ? lastDecodedFrame + 1 === key
+            : true)
         ) {
-          postMessage({ type: 'disconnect' })
-          setTimeoutId = self.setTimeout(() => {
-            postMessage({ type: 'reconnect' })
-          }, 2000)
+          concatFrame({
+            buffer,
+            header,
+            length,
+            sum,
+            frame: key,
+            decoder,
+          })
+          if (setTimeoutId) {
+            clearTimeout(setTimeoutId)
+            setTimeoutId = undefined
+          }
+          return true
+        } else {
+          return false
         }
-      },
-    })
+      })
 
-    await webTransport.datagrams.readable.pipeTo(writable)
-  }
+      if (
+        keys.length > 1 &&
+        result.every((value) => value === false) &&
+        setTimeoutId === undefined
+      ) {
+        postMessage({ type: 'disconnect' })
+        setTimeoutId = self.setTimeout(() => {
+          postMessage({ type: 'reconnect' })
+        }, 2000)
+      }
+    },
+  })
 
-  const disconnect = () => {
-    webTransport.close()
-  }
-
-  switch (event.data.type) {
-    case 'connect':
-      return connect(event)
-    case 'disconnect': {
-      return disconnect()
-    }
-    default:
-      throw new Error('unreachable')
-  }
+  await webTransport.datagrams.readable.pipeTo(writable)
 })
 
 const concatFrame = ({
@@ -166,7 +149,11 @@ const concatFrame = ({
       payload.set(new Uint8Array(b[i]), offset)
       offset += b[i].byteLength
     } else {
-      const dummy = new ArrayBuffer(offset + LIMIT < l ? LIMIT : l - LIMIT)
+      const dummy = new ArrayBuffer(
+        offset + BYTE_LENGTH_LIMIT < l
+          ? BYTE_LENGTH_LIMIT
+          : l - BYTE_LENGTH_LIMIT
+      )
       payload.set(new Uint8Array(dummy), offset)
       offset += dummy.byteLength
     }
