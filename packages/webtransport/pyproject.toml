@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "server"
+name = "webtransport"
 version = "0.1.0"
 description = ""
 authors = ["Tadao Iseki <me@saitolume.com>"]

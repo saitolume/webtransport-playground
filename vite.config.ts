@@ -4,7 +4,7 @@ import { defineConfig } from 'vite'
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  root: path.resolve('client'),
+  root: path.resolve('packages/client'),
   build: {
     target: 'esnext',
     outDir: path.resolve('dist'),
@@ -12,7 +12,7 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      '~': path.resolve('client'),
+      '~': path.resolve('packages/client'),
     },
   },
 })

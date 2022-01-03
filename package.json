@@ -7,7 +7,6 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "server": "poetry run python src/main.py certificate.pem certificate.key",
     "format": "eslint . --ext .ts,.tsx --fix",
     "lint": "eslint . --ext .ts,.tsx"
   },
