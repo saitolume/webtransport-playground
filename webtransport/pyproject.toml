@@ -10,6 +10,7 @@ python = "^3.10.0"
 aioquic = {git = "https://github.com/saitolume/aioquic.git", rev = "update-h3-datagram-value"}
 argparse = "^1.4.0"
 asyncio = "^3.4.3"
+python-dotenv = "^0.19.2"
 
 [tool.poetry.dev-dependencies]
 

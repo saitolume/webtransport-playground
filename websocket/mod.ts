@@ -1,11 +1,15 @@
+import { config } from "dotenv/mod.ts";
+import { resolve } from "path/mod.ts";
 import { App } from "./app.ts";
 import { getRoomIdFromURL, UUID_FORMAT } from "./utils.ts";
 
 type RoomId = string;
 type ClientId = string;
 
+const env = config({ path: resolve("..", ".env.local") });
+
 const viewersByRoomId = new Map<RoomId, Map<ClientId, WebSocket>>();
-const server = Deno.listen({ port: 9000 });
+const server = Deno.listen({ port: Number(env.PORT) });
 
 for await (const conn of server) {
   const app = new App(Deno.serveHttp(conn));

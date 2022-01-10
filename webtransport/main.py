@@ -4,6 +4,7 @@ import logging
 import re
 
 from collections import defaultdict
+from dotenv import dotenv_values
 from typing import Any, Dict, Optional
 
 from aioquic.asyncio import QuicConnectionProtocol, serve
@@ -14,12 +15,12 @@ from aioquic.quic.events import ProtocolNegotiated, StreamReset, QuicEvent
 from aioquic.quic.logger import QuicLogger
 
 BIND_ADDRESS = '::1'
-BIND_PORT = 4433
 UUID_FORMAT = r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
 
 logger = logging.getLogger(__name__)
 quic_logger = QuicLogger()
 logging.basicConfig(level=logging.DEBUG)
+env = dotenv_values('../.env.local')
 
 # https://datatracker.ietf.org/doc/html/draft-ietf-masque-h3-datagram-05#section-9.1
 H3_DATAGRAM_05 = 0xffd277
@@ -150,12 +151,12 @@ if __name__ == '__main__':
     loop.run_until_complete(
         serve(
             BIND_ADDRESS,
-            BIND_PORT,
+            env['PORT'],
             configuration=configuration,
             create_protocol=WebTransportProtocol,
         ))
     try:
-        logging.info(f'Listening on https://{BIND_ADDRESS}:{BIND_PORT}')
+        logging.info('Listening on https://{}:{}'.format(BIND_ADDRESS, env['PORT']))
         loop.run_forever()
     except KeyboardInterrupt:
         pass

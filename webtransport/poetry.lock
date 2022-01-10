@@ -88,10 +88,21 @@ category = "main"
 optional = false
 python-versions = "*"
 
+[[package]]
+name = "python-dotenv"
+version = "0.19.2"
+description = "Read key-value pairs from a .env file and set them as environment variables"
+category = "main"
+optional = false
+python-versions = ">=3.5"
+
+[package.extras]
+cli = ["click (>=5.0)"]
+
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.10.0"
-content-hash = "4bf2adeef5f2427f44969d1ac0582a3a4a28d1738608eb6fcc6bf408c002825d"
+content-hash = "7100067fbe76b07437a1ecf9181a4613de6a04ca401a04ee85ee4bcdf673db3c"
 
 [metadata.files]
 aioquic = []
@@ -217,4 +228,8 @@ pylsqpack = [
     {file = "pylsqpack-0.3.13-pp37-pypy37_pp73-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_12_x86_64.manylinux2010_x86_64.whl", hash = "sha256:c654623f21199da1681dfc494a16c2f372e445b06bb3c1e5cad4e7fc7d741bd3"},
     {file = "pylsqpack-0.3.13-pp37-pypy37_pp73-win_amd64.whl", hash = "sha256:163ffc0227618cadc6e457dada8ecd9012b312aa1ab2441d0a990a5b9358edce"},
     {file = "pylsqpack-0.3.13.tar.gz", hash = "sha256:4e8f7b4d3e40581756fc5e85c7551832db93498a9dab82ed8222af8cf4d6cabb"},
+]
+python-dotenv = [
+    {file = "python-dotenv-0.19.2.tar.gz", hash = "sha256:a5de49a31e953b45ff2d2fd434bbc2670e8db5273606c1e737cc6b93eff3655f"},
+    {file = "python_dotenv-0.19.2-py2.py3-none-any.whl", hash = "sha256:32b2bdc1873fd3a3c346da1c6db83d0053c3c62f28f1f38516070c4c8971b1d3"},
 ]

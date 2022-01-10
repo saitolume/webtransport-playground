@@ -1,5 +1,7 @@
 {
   "imports": {
-    "http/": "https://deno.land/std@0.120.0/http/"
+    "dotenv/": "https://deno.land/x/dotenv@v3.1.0/",
+    "http/": "https://deno.land/std@0.120.0/http/",
+    "path/": "https://deno.land/std@0.120.0/path/"
   }
 }
