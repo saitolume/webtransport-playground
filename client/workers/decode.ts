@@ -1,3 +1,5 @@
+import { Connector } from '~/connector'
+
 type FrameCount = number
 type Header = Record<
   FrameCount,
@@ -10,7 +12,7 @@ type Sum = Record<FrameCount, number>
 type DecodeProps = {
   type: 'connect'
   writable: WritableStream<VideoFrame>
-  roomId: string
+  url: string
 }
 
 const BYTE_LENGTH_LIMIT = 1000
@@ -19,10 +21,7 @@ let lastDecodedFrame: number | undefined = undefined
 let setTimeoutId: number | undefined = undefined
 
 addEventListener('message', async ({ data }: MessageEvent<DecodeProps>) => {
-  const url = `https://localhost:4433/${data.roomId}`
-  const webTransport = new WebTransport(url)
-  await webTransport.ready
-
+  const connector = await Connector.init(data.url)
   const writer = data.writable.getWriter()
 
   const decoder = new VideoDecoder({
@@ -42,9 +41,11 @@ addEventListener('message', async ({ data }: MessageEvent<DecodeProps>) => {
   const length: Length = {}
   const sum: Sum = {}
 
-  const writable = new WritableStream<Uint8Array>({
-    write(chunk) {
-      const dataView = new DataView(chunk.buffer)
+  const writable = new WritableStream<Uint8Array | Blob>({
+    async write(chunk) {
+      const source =
+        chunk instanceof Uint8Array ? chunk.buffer : await chunk.arrayBuffer()
+      const dataView = new DataView(source)
       const frame = dataView.getUint32(0)
       const order = dataView.getUint32(4)
 
@@ -64,7 +65,7 @@ addEventListener('message', async ({ data }: MessageEvent<DecodeProps>) => {
         return
       }
 
-      const data = new Uint8Array(chunk.buffer.slice(8))
+      const data = new Uint8Array(source.slice(8))
       buffer[frame][order] = data
       sum[frame] += data.byteLength
 
@@ -121,7 +122,7 @@ addEventListener('message', async ({ data }: MessageEvent<DecodeProps>) => {
     },
   })
 
-  await webTransport.datagrams.readable.pipeTo(writable)
+  connector.readable.pipeTo(writable)
 })
 
 const concatFrame = ({
@@ -170,6 +171,7 @@ const concatFrame = ({
 
   if (!waitingKeyframe) {
     decoder.decode(chunk)
+    console.log(chunk)
     lastDecodedFrame = frame
   }
 

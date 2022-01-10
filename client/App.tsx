@@ -15,7 +15,8 @@ const App: VFC = () => (
           element: <Index />,
           children: [],
         },
-        { path: ':roomId', element: <RoomId /> },
+        { path: '/ws/:roomId', element: <RoomId /> },
+        { path: '/wt/:roomId', element: <RoomId /> },
       ]}
     >
       <Outlet />

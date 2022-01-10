@@ -1,5 +1,6 @@
 import {
   Box,
+  Heading,
   Icon,
   IconButton,
   Input,
@@ -17,6 +18,8 @@ import {
   PopoverContent,
   PopoverTrigger,
   Portal,
+  Radio,
+  RadioGroup,
   Select,
   Stack,
   Tooltip,
@@ -34,10 +37,10 @@ import {
 import { FaFacebook, FaTwitter } from 'react-icons/fa'
 import {
   MdContentCopy,
+  MdMoreVert,
   MdPhotoCamera,
   MdPlayArrow,
   MdScreenShare,
-  MdShare,
   MdStop,
 } from 'react-icons/md'
 import { v4 } from 'uuid'
@@ -52,7 +55,20 @@ const Index = () => {
   const [isConnecting, setIsConnecting] = useState(false)
   const [mediaDeviceInfo, setMediaDeviceInfo] = useState<MediaDeviceInfo[]>([])
   const [roomId] = useState(v4())
-  const shareURL = useMemo(() => `${location.href}${roomId}`, [roomId])
+
+  const [protocol, setProtocol] = useState<'webtransport' | 'websocket'>(() => {
+    const item = localStorage.getItem('protocol')
+    if (item !== 'webtransport' && item !== 'websocket') {
+      return 'webtransport'
+    }
+    return item
+  })
+
+  const shareURL = useMemo(
+    () =>
+      `${location.href}${protocol === 'webtransport' ? 'wt' : 'ws'}/${roomId}`,
+    [protocol, roomId]
+  )
 
   const handleCopy = useCallback(async () => {
     await navigator.clipboard.writeText(shareURL)
@@ -109,9 +125,14 @@ const Index = () => {
       worker.current.postMessage(
         {
           type: 'connect',
+          url:
+            protocol === 'websocket'
+              ? `${import.meta.env.VITE_WEBSOCKET_BASE_URL}/streams/${roomId}`
+              : `${
+                  import.meta.env.VITE_WEBTRANSPORT_BASE_URL
+                }/streams/${roomId}`,
           width: video.current.width,
           height: video.current.height,
-          roomId,
           readable: processor.readable,
           writable: generator.writable,
         },
@@ -119,7 +140,7 @@ const Index = () => {
         [processor.readable, generator.writable]
       )
     },
-    [roomId]
+    [protocol, roomId]
   )
 
   const handleStartStreaming = useCallback(async () => {
@@ -132,6 +153,13 @@ const Index = () => {
   const handleStopStreaming = useCallback(async () => {
     worker.current?.postMessage({ type: 'stop' })
     setIsConnecting(false)
+  }, [])
+
+  const handleChangeProtocol = useCallback((value: string) => {
+    if (value === 'webtransport' || value === 'websocket') {
+      setProtocol(value)
+      localStorage.setItem('protocol', value)
+    }
   }, [])
 
   useEffect(() => {
@@ -201,11 +229,11 @@ const Index = () => {
               </PopoverContent>
             </Portal>
           </Popover>
-          <Tooltip label="シェア">
+          <Tooltip label="メニュー">
             <IconButton
-              aria-label="シェア"
+              aria-label="メニュー"
               colorScheme="blue"
-              icon={<Icon as={MdShare} h={6} w={6} />}
+              icon={<Icon as={MdMoreVert} h={6} w={6} />}
               onClick={onOpen}
               size="lg"
               isRound
@@ -230,50 +258,68 @@ const Index = () => {
       <Modal isOpen={isOpen} onClose={onClose}>
         <ModalOverlay />
         <ModalContent>
-          <ModalHeader>シェア</ModalHeader>
+          <ModalHeader>メニュー</ModalHeader>
           <ModalCloseButton />
           <ModalBody>
-            <Stack direction="row" marginBottom={4} spacing={4}>
-              <ExternalLink
-                href={`https://twitter.com/intent/tweet?text=${decodeURIComponent(
-                  shareURL
-                )}`}
-                rel="noopener noreferrer"
-                target="_blank"
-              >
-                <IconButton
-                  aria-label="Twitter"
-                  colorScheme="twitter"
-                  icon={<Icon as={FaTwitter} h={6} w={6} />}
-                  size="lg"
-                  isRound
-                />
-              </ExternalLink>
-              <ExternalLink
-                href={`https://www.facebook.com/sharer/sharer.php?u=${decodeURIComponent(
-                  shareURL
-                )}`}
-                rel="noopener noreferrer"
-                target="_blank"
-              >
-                <IconButton
-                  aria-label="Facebook"
-                  colorScheme="facebook"
-                  icon={<Icon as={FaFacebook} h={6} w={6} />}
-                  size="lg"
-                  isRound
-                />
-              </ExternalLink>
+            <Stack gap={4} pb={4}>
+              <Stack>
+                <Heading as="h2" size="sm">
+                  配信方法
+                </Heading>
+                <RadioGroup onChange={handleChangeProtocol} value={protocol}>
+                  <Stack direction="row" spacing={5}>
+                    <Radio value="webtransport">WebTransport</Radio>
+                    <Radio value="websocket">WebSocket</Radio>
+                  </Stack>
+                </RadioGroup>
+              </Stack>
+              <Stack>
+                <Heading as="h2" size="sm">
+                  シェア
+                </Heading>
+                <Stack direction="row" spacing={4}>
+                  <ExternalLink
+                    href={`https://twitter.com/intent/tweet?text=${decodeURIComponent(
+                      shareURL
+                    )}`}
+                    rel="noopener noreferrer"
+                    target="_blank"
+                  >
+                    <IconButton
+                      aria-label="Twitter"
+                      colorScheme="twitter"
+                      icon={<Icon as={FaTwitter} h={5} w={5} />}
+                      size="md"
+                      isRound
+                    />
+                  </ExternalLink>
+                  <ExternalLink
+                    href={`https://www.facebook.com/sharer/sharer.php?u=${decodeURIComponent(
+                      shareURL
+                    )}`}
+                    rel="noopener noreferrer"
+                    target="_blank"
+                  >
+                    <IconButton
+                      aria-label="Facebook"
+                      colorScheme="facebook"
+                      icon={<Icon as={FaFacebook} h={5} w={5} />}
+                      size="md"
+                      isRound
+                    />
+                  </ExternalLink>
+                  <InputGroup marginBottom={4}>
+                    <Input type="text" value={shareURL} readOnly />
+                    <InputRightAddon
+                      aria-label="URL をコピー"
+                      as={IconButton}
+                      icon={<Icon as={MdContentCopy} />}
+                      onClick={handleCopy}
+                    />
+                  </InputGroup>
+                </Stack>
+              </Stack>
             </Stack>
-            <InputGroup marginBottom={4}>
-              <Input type="text" value={shareURL} readOnly />
-              <InputRightAddon
-                aria-label="URL をコピー"
-                as={IconButton}
-                icon={<Icon as={MdContentCopy} />}
-                onClick={handleCopy}
-              />
-            </InputGroup>
           </ModalBody>
         </ModalContent>
       </Modal>

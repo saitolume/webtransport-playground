@@ -1,11 +1,13 @@
+import { Connector } from '~/connector'
+
 type EncodeProps =
   | {
       type: 'connect'
       width: number
       height: number
-      roomId: string
       readable: ReadableStream<VideoFrame>
       writable: WritableStream<VideoFrame>
+      url: string
     }
   | {
       type: 'disconnect'
@@ -25,10 +27,8 @@ addEventListener('message', async (event: MessageEvent<EncodeProps>) => {
 
   const connect = async ({ data }: MessageEvent<EncodeProps>) => {
     if (data.type !== 'connect') return
-    const url = `https://localhost:4433/streams/${data.roomId}`
-    const webTransport = new WebTransport(url)
-    await webTransport.ready
-    const writer = webTransport.datagrams.writable.getWriter()
+    const connector = await Connector.init(data.url)
+    const writer = connector.writable.getWriter()
 
     const encoder = new VideoEncoder({
       async output(chunk) {
@@ -40,7 +40,7 @@ addEventListener('message', async (event: MessageEvent<EncodeProps>) => {
         header.setBigInt64(9, BigInt(chunk.timestamp))
         header.setBigUint64(17, BigInt(chunk.duration ?? 0))
         header.setUint32(25, chunk.byteLength)
-        await writer.write(header)
+        await writer.write(header.buffer)
         // body(8) = frame(4) + order (4)
         const payload = new DataView(new ArrayBuffer(chunk.byteLength))
         chunk.copyTo(payload)
