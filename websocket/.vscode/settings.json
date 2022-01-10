@@ -1,0 +1,13 @@
+{
+  "deno.enable": true,
+  "deno.lint": true,
+  "deno.unstable": false,
+  "deno.importMap": "./import_map.json",
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "denoland.vscode-deno",
+  "eslint.enable": false,
+  "prettier.enable": false,
+  "[typescript]": {
+    "editor.defaultFormatter": "denoland.vscode-deno"
+  }
+}
