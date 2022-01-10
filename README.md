@@ -7,6 +7,7 @@ Live Streaming Software implemented by WebTransport
 - Node.js v16.13.0
 - Deno v1.17.2
 - Python v3.10.0
+- Google Chrome v97
 
 ## Running
 
