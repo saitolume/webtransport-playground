@@ -7,8 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "format": "eslint . --ext .ts,.tsx --fix",
-    "lint": "eslint . --ext .ts,.tsx"
+    "format": "eslint client --ext .ts,.tsx --fix",
+    "lint": "eslint client --ext .ts,.tsx"
   },
   "dependencies": {
     "@chakra-ui/icons": "^1.1.1",
