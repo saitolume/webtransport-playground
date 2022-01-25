@@ -171,7 +171,6 @@ const concatFrame = ({
 
   if (!waitingKeyframe) {
     decoder.decode(chunk)
-    console.log(chunk)
     lastDecodedFrame = frame
   }
 
