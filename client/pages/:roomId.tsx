@@ -10,8 +10,6 @@ import {
 import { useMatch } from 'react-location'
 import DecoderWorker from '~/workers/decode?worker'
 
-const protocol = 'websocket' as 'websocket' | 'webtransport'
-
 const RoomId: VFC = () => {
   const video = useRef<HTMLVideoElement>(null)
   const worker = useRef<Worker>()
@@ -22,7 +20,10 @@ const RoomId: VFC = () => {
 
   const {
     params: { roomId },
+    pathname,
   } = useMatch()
+
+  const protocol = pathname.includes('wt') ? 'webtransport' : 'websocket'
 
   const handlePlay = useCallback(() => {
     if (video.current === null) return
@@ -37,8 +38,8 @@ const RoomId: VFC = () => {
         writable,
         url:
           protocol === 'webtransport'
-            ? `${import.meta.env.VITE_WEBSOCKET_BASE_URL}/${roomId}`
-            : `${import.meta.env.VITE_WEBTRANSPORT_BASE_URL}/${roomId}`,
+            ? `${import.meta.env.VITE_WEBTRANSPORT_BASE_URL}/${roomId}`
+            : `${import.meta.env.VITE_WEBSOCKET_BASE_URL}/${roomId}`,
       },
       [writable]
     )
