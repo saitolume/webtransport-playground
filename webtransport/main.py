@@ -14,7 +14,7 @@ from aioquic.quic.configuration import QuicConfiguration
 from aioquic.quic.events import ProtocolNegotiated, StreamReset, QuicEvent
 from aioquic.quic.logger import QuicLogger
 
-BIND_ADDRESS = '::1'
+BIND_ADDRESS = '::'
 UUID_FORMAT = r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
 
 logger = logging.getLogger(__name__)
